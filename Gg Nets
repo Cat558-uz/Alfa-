@@ -1,0 +1,201 @@
+-- Biblioteca de GUI personalizada
+local Library = {}
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+local PlayerGui = player:WaitForChild("PlayerGui")
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "CustomLibraryUI"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = PlayerGui
+
+local main = Instance.new("Frame", gui)
+main.Size = UDim2.new(0, 400, 0, 300)
+main.Position = UDim2.new(0.5, -200, 0.5, -150)
+main.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+main.BorderSizePixel = 0
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 12)
+
+local title = Instance.new("TextLabel", main)
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundTransparency = 1
+title.Text = "Library"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextScaled = true
+title.Font = Enum.Font.GothamBold
+
+local tabButtons = Instance.new("Frame", main)
+tabButtons.Size = UDim2.new(0, 100, 1, -40)
+tabButtons.Position = UDim2.new(0, 0, 0, 40)
+tabButtons.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+Instance.new("UICorner", tabButtons).CornerRadius = UDim.new(0, 8)
+
+local pages = Instance.new("Frame", main)
+pages.Size = UDim2.new(1, -100, 1, -40)
+pages.Position = UDim2.new(0, 100, 0, 40)
+pages.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Instance.new("UICorner", pages).CornerRadius = UDim.new(0, 8)
+
+local UIPageLayout = Instance.new("UIPageLayout", pages)
+UIPageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIPageLayout.EasingDirection = Enum.EasingDirection.InOut
+UIPageLayout.EasingStyle = Enum.EasingStyle.Quad
+UIPageLayout.TweenTime = 0.3
+
+function Library:AddTitle(text)
+	title.Text = text
+end
+
+function Library:AddTab(tabName)
+	local button = Instance.new("TextButton", tabButtons)
+	button.Size = UDim2.new(1, 0, 0, 30)
+	button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	button.TextColor3 = Color3.fromRGB(255, 255, 255)
+	button.Font = Enum.Font.Gotham
+	button.Text = tabName
+	button.TextSize = 14
+	button.AutoButtonColor = true
+
+	local tabPage = Instance.new("Frame")
+	tabPage.Size = UDim2.new(1, 0, 1, 0)
+	tabPage.BackgroundTransparency = 1
+	tabPage.Name = tabName
+	tabPage.Parent = pages
+
+	local layout = Instance.new("UIListLayout", tabPage)
+	layout.Padding = UDim.new(0, 6)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+	button.MouseButton1Click:Connect(function()
+		UIPageLayout:JumpTo(tabPage)
+	end)
+
+	local tabTable = {}
+
+	function tabTable:AddLabel(text)
+		local label = Instance.new("TextLabel", tabPage)
+		label.Size = UDim2.new(1, -10, 0, 20)
+		label.Text = text
+		label.BackgroundTransparency = 1
+		label.TextColor3 = Color3.new(1, 1, 1)
+		label.Font = Enum.Font.Gotham
+		label.TextSize = 14
+		label.TextXAlignment = Enum.TextXAlignment.Left
+	end
+
+	function tabTable:AddButton(text, callback)
+		local button = Instance.new("TextButton", tabPage)
+		button.Size = UDim2.new(1, -10, 0, 30)
+		button.Text = text
+		button.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+		button.TextColor3 = Color3.new(1, 1, 1)
+		button.Font = Enum.Font.Gotham
+		button.TextSize = 14
+		button.AutoButtonColor = true
+		Instance.new("UICorner", button).CornerRadius = UDim.new(0, 6)
+		button.MouseButton1Click:Connect(function()
+			pcall(callback)
+		end)
+	end
+
+	function tabTable:AddDropdown(titleText, items)
+		local holder = Instance.new("Frame", tabPage)
+		holder.BackgroundTransparency = 1
+		holder.Size = UDim2.new(1, -10, 0, 30)
+
+		local button = Instance.new("TextButton", holder)
+		button.Size = UDim2.new(1, 0, 0, 30)
+		button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+		button.Text = titleText
+		button.TextColor3 = Color3.new(1, 1, 1)
+		button.Font = Enum.Font.Gotham
+		button.TextSize = 14
+		button.AutoButtonColor = true
+		Instance.new("UICorner", button).CornerRadius = UDim.new(0, 6)
+
+		local listHolder = Instance.new("Frame", tabPage)
+		listHolder.Size = UDim2.new(1, -10, 0, #items * 30)
+		listHolder.BackgroundTransparency = 1
+		listHolder.Visible = false
+
+		local layout = Instance.new("UIListLayout", listHolder)
+		layout.Padding = UDim.new(0, 4)
+
+		for _, v in pairs(items) do
+			local opt = Instance.new("TextButton", listHolder)
+			opt.Size = UDim2.new(1, 0, 0, 28)
+			opt.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+			opt.Text = v.Name
+			opt.TextColor3 = Color3.new(1, 1, 1)
+			opt.Font = Enum.Font.Gotham
+			opt.TextSize = 14
+			Instance.new("UICorner", opt).CornerRadius = UDim.new(0, 6)
+
+			opt.MouseButton1Click:Connect(function()
+				pcall(v.Callback)
+			end)
+		end
+
+		button.MouseButton1Click:Connect(function()
+			listHolder.Visible = not listHolder.Visible
+		end)
+	end
+
+	return tabTable
+end
+
+function Library:AddKeyOpen(key)
+	local open = true
+	UserInputService.InputBegan:Connect(function(input, gpe)
+		if gpe then return end
+		if input.KeyCode == Enum.KeyCode[key] then
+			open = not open
+			gui.Enabled = open
+		end
+	end)
+end
+
+function Library:AddMainButton()
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(0, 40, 0, 40)
+	button.Position = UDim2.new(0, 10, 0.5, -20)
+	button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+	button.Text = ""
+	button.AutoButtonColor = true
+	button.Parent = PlayerGui
+
+	Instance.new("UICorner", button).CornerRadius = UDim.new(1, 0)
+
+	local dragging, offset
+	button.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+			offset = Vector2.new(input.Position.X - button.AbsolutePosition.X, input.Position.Y - button.AbsolutePosition.Y)
+		end
+	end)
+
+	button.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = false
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+			local newPosition = UDim2.new(0, input.Position.X - offset.X, 0, input.Position.Y - offset.Y)
+			button.Position = newPosition
+		end
+	end)
+
+	button.MouseButton1Click:Connect(function()
+		gui.Enabled = not gui.Enabled
+	end)
+end
+
+return Library
