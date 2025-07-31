@@ -1,201 +1,246 @@
--- Biblioteca de GUI personalizada
+-- Library com toggle key, minimizar/maximizar/fechar e tudo arredondado
 local Library = {}
 
+-- Serviços
 local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local player = Players.LocalPlayer
-local PlayerGui = player:WaitForChild("PlayerGui")
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "CustomLibraryUI"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = true
-gui.Parent = PlayerGui
+-- GUI principal
+local ScreenGui = Instance.new("ScreenGui", PlayerGui)
+ScreenGui.Name = "CustomLibrary"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
 
-local main = Instance.new("Frame", gui)
-main.Size = UDim2.new(0, 400, 0, 300)
-main.Position = UDim2.new(0.5, -200, 0.5, -150)
-main.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-main.BorderSizePixel = 0
-main.AnchorPoint = Vector2.new(0.5, 0.5)
+-- MainFrame
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 400, 0, 300)
+MainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
 
-Instance.new("UICorner", main).CornerRadius = UDim.new(0, 12)
+local corner = Instance.new("UICorner", MainFrame)
+corner.CornerRadius = UDim.new(0, 8)
 
-local title = Instance.new("TextLabel", main)
-title.Size = UDim2.new(1, 0, 0, 40)
-title.BackgroundTransparency = 1
-title.Text = "Library"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.TextScaled = true
-title.Font = Enum.Font.GothamBold
+-- Header com botão minimizar e fechar
+local Header = Instance.new("Frame", MainFrame)
+Header.Size = UDim2.new(1, 0, 0, 30)
+Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 8)
 
-local tabButtons = Instance.new("Frame", main)
-tabButtons.Size = UDim2.new(0, 100, 1, -40)
-tabButtons.Position = UDim2.new(0, 0, 0, 40)
-tabButtons.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-Instance.new("UICorner", tabButtons).CornerRadius = UDim.new(0, 8)
+local TitleLabel = Instance.new("TextLabel", Header)
+TitleLabel.Size = UDim2.new(1, -90, 1, 0)
+TitleLabel.Position = UDim2.new(0, 5, 0, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "Library"
+TitleLabel.TextColor3 = Color3.new(1, 1, 1)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextSize = 14
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-local pages = Instance.new("Frame", main)
-pages.Size = UDim2.new(1, -100, 1, -40)
-pages.Position = UDim2.new(0, 100, 0, 40)
-pages.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-Instance.new("UICorner", pages).CornerRadius = UDim.new(0, 8)
+-- Botões: minimizar, restaurar, fechar
+local function createHeaderButton(symbol, posX)
+	local btn = Instance.new("TextButton", Header)
+	btn.Size = UDim2.new(0, 30, 0, 30)
+	btn.Position = UDim2.new(1, posX, 0, 0)
+	btn.BackgroundTransparency = 1
+	btn.Text = symbol
+	btn.TextColor3 = Color3.new(1,1,1)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 16
+	return btn
+end
 
-local UIPageLayout = Instance.new("UIPageLayout", pages)
-UIPageLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIPageLayout.EasingDirection = Enum.EasingDirection.InOut
-UIPageLayout.EasingStyle = Enum.EasingStyle.Quad
-UIPageLayout.TweenTime = 0.3
+local MinBtn = createHeaderButton("-", -90)
+local MaxBtn = createHeaderButton("+", -60)
+local CloseBtn = createHeaderButton("X", -30)
+
+-- Layout das abas
+local TabButtons = Instance.new("Frame", MainFrame)
+TabButtons.Size = UDim2.new(0, 100, 1, -30)
+TabButtons.Position = UDim2.new(0, 0, 0, 30)
+TabButtons.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Instance.new("UICorner", TabButtons).CornerRadius = UDim.new(0, 6)
+
+local TabContent = Instance.new("Frame", MainFrame)
+TabContent.Position = UDim2.new(0, 100, 0, 30)
+TabContent.Size = UDim2.new(1, -100, 1, -30)
+TabContent.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+Instance.new("UICorner", TabContent).CornerRadius = UDim.new(0, 6)
+
+local UIListLayout = Instance.new("UIListLayout", TabButtons)
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+local Tabs = {}
+local GUIVisible = true
+local Minimized = false
 
 function Library:AddTitle(text)
-	title.Text = text
+	TitleLabel.Text = text
 end
+
+function Library:AddKeyOpen(keyName)
+	UserInputService.InputBegan:Connect(function(input, gpe)
+		if not gpe and input.KeyCode == Enum.KeyCode[keyName:upper()] then
+			GUIVisible = not GUIVisible
+			ScreenGui.Enabled = GUIVisible
+		end
+	end)
+end
+
+MinBtn.MouseButton1Click:Connect(function()
+	if not Minimized then
+		-- Minimiza: esconde abas e conteúdo, reduz altura
+		TabButtons.Visible = false
+		TabContent.Visible = false
+		MainFrame:TweenSize(UDim2.new(0, 400, 0, 30), "Out", "Quart", 0.25, true)
+		Minimized = true
+	end
+end)
+
+MaxBtn.MouseButton1Click:Connect(function()
+	if Minimized then
+		-- Maximiza: mostra abas e conteúdo, volta ao tamanho original
+		TabButtons.Visible = true
+		TabContent.Visible = true
+		MainFrame:TweenSize(UDim2.new(0, 400, 0, 300), "Out", "Quart", 0.25, true)
+		Minimized = false
+	end
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+	ScreenGui:Destroy()
+end)
 
 function Library:AddTab(tabName)
-	local button = Instance.new("TextButton", tabButtons)
-	button.Size = UDim2.new(1, 0, 0, 30)
-	button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-	button.TextColor3 = Color3.fromRGB(255, 255, 255)
-	button.Font = Enum.Font.Gotham
-	button.Text = tabName
-	button.TextSize = 14
-	button.AutoButtonColor = true
+	local tabButton = Instance.new("TextButton", TabButtons)
+	tabButton.Text = tabName
+	tabButton.Size = UDim2.new(1, 0, 0, 30)
+	tabButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	tabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	tabButton.Font = Enum.Font.Gotham
+	tabButton.TextSize = 14
+	tabButton.BorderSizePixel = 0
+	Instance.new("UICorner", tabButton).CornerRadius = UDim.new(0, 6)
 
-	local tabPage = Instance.new("Frame")
-	tabPage.Size = UDim2.new(1, 0, 1, 0)
-	tabPage.BackgroundTransparency = 1
-	tabPage.Name = tabName
-	tabPage.Parent = pages
+	local scroll = Instance.new("ScrollingFrame", TabContent)
+	scroll.Size = UDim2.new(1, 0, 1, 0)
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scroll.ScrollBarThickness = 4
+	scroll.BackgroundTransparency = 1
+	scroll.Visible = false
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.Name = tabName
 
-	local layout = Instance.new("UIListLayout", tabPage)
-	layout.Padding = UDim.new(0, 6)
+	local layout = Instance.new("UIListLayout", scroll)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, 5)
 
-	button.MouseButton1Click:Connect(function()
-		UIPageLayout:JumpTo(tabPage)
+	Tabs[tabName] = scroll
+
+	tabButton.MouseButton1Click:Connect(function()
+		for _, tab in pairs(TabContent:GetChildren()) do
+			if tab:IsA("ScrollingFrame") then
+				tab.Visible = false
+			end
+		end
+		scroll.Visible = true
 	end)
 
-	local tabTable = {}
+	return {
+		AddButton = function(_, text, callback)
+			local btn = Instance.new("TextButton", scroll)
+			btn.Size = UDim2.new(1, -10, 0, 30)
+			btn.Text = text
+			btn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			btn.Font = Enum.Font.Gotham
+			btn.TextSize = 14
+			btn.BorderSizePixel = 0
+			Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+			btn.MouseButton1Click:Connect(callback)
+		end,
 
-	function tabTable:AddLabel(text)
-		local label = Instance.new("TextLabel", tabPage)
-		label.Size = UDim2.new(1, -10, 0, 20)
-		label.Text = text
-		label.BackgroundTransparency = 1
-		label.TextColor3 = Color3.new(1, 1, 1)
-		label.Font = Enum.Font.Gotham
-		label.TextSize = 14
-		label.TextXAlignment = Enum.TextXAlignment.Left
-	end
+		AddLabel = function(_, text)
+			local lbl = Instance.new("TextLabel", scroll)
+			lbl.Size = UDim2.new(1, -10, 0, 25)
+			lbl.Text = text
+			lbl.BackgroundTransparency = 1
+			lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+			lbl.Font = Enum.Font.Gotham
+			lbl.TextSize = 14
+		end,
 
-	function tabTable:AddButton(text, callback)
-		local button = Instance.new("TextButton", tabPage)
-		button.Size = UDim2.new(1, -10, 0, 30)
-		button.Text = text
-		button.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-		button.TextColor3 = Color3.new(1, 1, 1)
-		button.Font = Enum.Font.Gotham
-		button.TextSize = 14
-		button.AutoButtonColor = true
-		Instance.new("UICorner", button).CornerRadius = UDim.new(0, 6)
-		button.MouseButton1Click:Connect(function()
-			pcall(callback)
-		end)
-	end
+		AddTextBox = function(_, placeholder, callback)
+			local txt = Instance.new("TextBox", scroll)
+			txt.Size = UDim2.new(1, -10, 0, 30)
+			txt.PlaceholderText = placeholder
+			txt.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+			txt.TextColor3 = Color3.fromRGB(255, 255, 255)
+			txt.Font = Enum.Font.Gotham
+			txt.TextSize = 14
+			txt.BorderSizePixel = 0
+			txt.ClearTextOnFocus = false
+			Instance.new("UICorner", txt).CornerRadius = UDim.new(0, 6)
+			txt.FocusLost:Connect(function(enter)
+				if enter then
+					callback(txt.Text)
+				end
+			end)
+		end,
 
-	function tabTable:AddDropdown(titleText, items)
-		local holder = Instance.new("Frame", tabPage)
-		holder.BackgroundTransparency = 1
-		holder.Size = UDim2.new(1, -10, 0, 30)
+		AddKeybind = function(_, name, callback)
+			local lbl = Instance.new("TextLabel", scroll)
+			lbl.Size = UDim2.new(1, -10, 0, 25)
+			lbl.Text = name .. ": Pressione uma tecla"
+			lbl.BackgroundTransparency = 1
+			lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+			lbl.Font = Enum.Font.Gotham
+			lbl.TextSize = 14
 
-		local button = Instance.new("TextButton", holder)
-		button.Size = UDim2.new(1, 0, 0, 30)
-		button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-		button.Text = titleText
-		button.TextColor3 = Color3.new(1, 1, 1)
-		button.Font = Enum.Font.Gotham
-		button.TextSize = 14
-		button.AutoButtonColor = true
-		Instance.new("UICorner", button).CornerRadius = UDim.new(0, 6)
+			local listening = false
+			lbl.InputBegan:Connect(function()
+				if not listening then
+					listening = true
+					lbl.Text = name .. ": Aguardando tecla..."
+					local connection
+					connection = UserInputService.InputBegan:Connect(function(input, gpe)
+						if not gpe and input.UserInputType == Enum.UserInputType.Keyboard then
+							lbl.Text = name .. ": " .. input.KeyCode.Name
+							callback(input.KeyCode)
+							listening = false
+							connection:Disconnect()
+						end
+					end)
+				end
+			end)
+		end,
 
-		local listHolder = Instance.new("Frame", tabPage)
-		listHolder.Size = UDim2.new(1, -10, 0, #items * 30)
-		listHolder.BackgroundTransparency = 1
-		listHolder.Visible = false
+		AddToggle = function(_, text, callback)
+			local toggle = Instance.new("TextButton", scroll)
+			toggle.Size = UDim2.new(1, -10, 0, 30)
+			toggle.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+			toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+			toggle.Font = Enum.Font.Gotham
+			toggle.TextSize = 14
+			toggle.BorderSizePixel = 0
+			Instance.new("UICorner", toggle).CornerRadius = UDim.new(0, 6)
 
-		local layout = Instance.new("UIListLayout", listHolder)
-		layout.Padding = UDim.new(0, 4)
+			local state = false
+			toggle.Text = "[ OFF ] " .. text
 
-		for _, v in pairs(items) do
-			local opt = Instance.new("TextButton", listHolder)
-			opt.Size = UDim2.new(1, 0, 0, 28)
-			opt.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-			opt.Text = v.Name
-			opt.TextColor3 = Color3.new(1, 1, 1)
-			opt.Font = Enum.Font.Gotham
-			opt.TextSize = 14
-			Instance.new("UICorner", opt).CornerRadius = UDim.new(0, 6)
-
-			opt.MouseButton1Click:Connect(function()
-				pcall(v.Callback)
+			toggle.MouseButton1Click:Connect(function()
+				state = not state
+				toggle.Text = (state and "[ ON ] " or "[ OFF ] ") .. text
+				callback(state)
 			end)
 		end
-
-		button.MouseButton1Click:Connect(function()
-			listHolder.Visible = not listHolder.Visible
-		end)
-	end
-
-	return tabTable
-end
-
-function Library:AddKeyOpen(key)
-	local open = true
-	UserInputService.InputBegan:Connect(function(input, gpe)
-		if gpe then return end
-		if input.KeyCode == Enum.KeyCode[key] then
-			open = not open
-			gui.Enabled = open
-		end
-	end)
-end
-
-function Library:AddMainButton()
-	local button = Instance.new("TextButton")
-	button.Size = UDim2.new(0, 40, 0, 40)
-	button.Position = UDim2.new(0, 10, 0.5, -20)
-	button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-	button.Text = ""
-	button.AutoButtonColor = true
-	button.Parent = PlayerGui
-
-	Instance.new("UICorner", button).CornerRadius = UDim.new(1, 0)
-
-	local dragging, offset
-	button.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-			dragging = true
-			offset = Vector2.new(input.Position.X - button.AbsolutePosition.X, input.Position.Y - button.AbsolutePosition.Y)
-		end
-	end)
-
-	button.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-			dragging = false
-		end
-	end)
-
-	UserInputService.InputChanged:Connect(function(input)
-		if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
-			local newPosition = UDim2.new(0, input.Position.X - offset.X, 0, input.Position.Y - offset.Y)
-			button.Position = newPosition
-		end
-	end)
-
-	button.MouseButton1Click:Connect(function()
-		gui.Enabled = not gui.Enabled
-	end)
+	}
 end
 
 return Library
